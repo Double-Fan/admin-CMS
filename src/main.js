@@ -18,6 +18,7 @@ import "@/permission"; // permission control
 import API from "@/api";
 
 import CategorySelect from "@/components/CategorySelect";
+import HitButton from "@/components/HitButton";
 
 /**
  * If you don't want to use mock-server
@@ -38,10 +39,11 @@ Vue.use(ElementUI, { locale });
 // Vue.use(ElementUI)
 
 Vue.config.productionTip = false;
-
+// 请求封装
 Vue.prototype.$API = API;
-
+// 注册全局组件
 Vue.component(CategorySelect.name, CategorySelect);
+Vue.component(HitButton.name, HitButton);
 
 new Vue({
   el: "#app",
