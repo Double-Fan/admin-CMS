@@ -1,25 +1,35 @@
 <template>
   <div>
-    <el-form ref="form" label-width="80px">
+    <el-form ref="form" label-width="80px" :model="spu">
       <el-form-item label="SPU名称">
-        <el-input placeholder="SPU名称"></el-input>
+        <el-input placeholder="SPU名称" v-model="spu.spuName"></el-input>
       </el-form-item>
       <el-form-item label="品牌名称">
-        <el-select placeholder="请选择品牌" value="">
-          <el-option label="label1" value="value"></el-option>
-          <el-option label="label2" value="value"></el-option>
-          <el-option label="label3" value="value"></el-option>
+        <el-select placeholder="请选择品牌" v-model="spu.tmId">
+          <el-option
+            :label="tm.tmName"
+            :value="tm.id"
+            v-for="tm of tradeMarkList"
+            :key="tm.id"
+          ></el-option>
         </el-select>
       </el-form-item>
       <el-form-item label="产品描述">
-        <el-input type="textarea" rows="4" placeholder="SPU描述"></el-input>
+        <el-input
+          type="textarea"
+          rows="4"
+          placeholder="SPU描述"
+          v-model="spu.description"
+        ></el-input>
       </el-form-item>
       <el-form-item label="SPU图片">
         <el-upload
-          action="https://jsonplaceholder.typicode.com/posts/"
+          action="/dev-api/admin/product/fileUpload"
           list-type="picture-card"
+          :file-list="spuImageList"
           :on-preview="handlePictureCardPreview"
           :on-remove="handleRemove"
+          :on-success="handleSuccess"
         >
           <i class="el-icon-plus"></i>
         </el-upload>
@@ -28,18 +38,73 @@
         </el-dialog>
       </el-form-item>
       <el-form-item label="销售属性">
-        <el-select placeholder="还有3未选择" value="">
-          <el-option label="label" value="value"></el-option>
+        <el-select
+          :placeholder="`还有 ${unSelectSaleAttr.length} 未选择`"
+          v-model="attrIdAndAttrName"
+        >
+          <el-option
+            :label="unSelect.name"
+            :value="`${unSelect.id}:${unSelect.name}`"
+            v-for="unSelect of unSelectSaleAttr"
+            :key="unSelect.id"
+          ></el-option>
         </el-select>
-        <el-button type="primary" icon="el-icon-plus">添加销售属性</el-button>
-        <el-table style="width: 100%" border="">
+        <el-button
+          type="primary"
+          icon="el-icon-plus"
+          :disabled="!attrIdAndAttrName"
+          @click="addSaleAttr"
+          >添加销售属性</el-button
+        >
+        <!-- 展示当前SPU属于自己的销售属性 -->
+        <el-table style="width: 100%" border :data="spu.spuSaleAttrList">
           <el-table-column type="index" label="序号" width="80" align="center">
           </el-table-column>
-          <el-table-column prop="prop" label="属性名" width="width">
+          <el-table-column prop="saleAttrName" label="属性名" width="width">
           </el-table-column>
-          <el-table-column prop="prop" label="属性值名称列表" width="width">
+          <el-table-column
+            prop="spuSaleAttrValueList"
+            label="属性值名称列表"
+            width="width"
+          >
+            <template slot-scope="{ row, $index }">
+              <el-tag
+                :key="tag.id"
+                v-for="(tag, index) in row.spuSaleAttrValueList"
+                closable
+                :disable-transitions="false"
+                @close="row.spuSaleAttrValueList.splice(index, 1)"
+              >
+                {{ tag.saleAttrValueName }}
+              </el-tag>
+              <el-input
+                class="input-new-tag"
+                v-if="row.inputVisible"
+                v-model="row.inputValue"
+                ref="saveTagInput"
+                size="small"
+                @keyup.enter.native="handleInputConfirm(row)"
+                @blur="handleInputConfirm(row)"
+              >
+              </el-input>
+              <el-button
+                v-else
+                class="button-new-tag"
+                size="small"
+                @click="addSaleAttrValue(row)"
+                >添加</el-button
+              >
+            </template>
           </el-table-column>
           <el-table-column prop="prop" label="操作" width="width">
+            <template slot-scope="{ row, $index }">
+              <el-button
+                type="danger"
+                icon="el-icon-delete"
+                size="mini"
+                @click="spu.spuSaleAttrList.splice($index, 1)"
+              ></el-button>
+            </template>
           </el-table-column>
         </el-table>
       </el-form-item>
@@ -59,22 +124,81 @@ export default {
       dialogImageUrl: "",
       dialogVisible: false,
       // SPU信息
-      spu: {},
+      spu: {
+        // 三级分类ID
+        category3Id: 0,
+        // 描述
+        description: "",
+        // 品牌ID
+        tmId: 0,
+        // SPU名称
+        spuName: "",
+        // SPU图片
+        spuImageList: [
+          {
+            id: 0,
+            imgName: "string",
+            imgUrl: "string",
+            spuId: 0,
+          },
+        ],
+        // 平台属性与属性值
+        spuSaleAttrList: [
+          // {
+          //   baseSaleAttrId: 0,
+          //   id: 0,
+          //   saleAttrName: "string",
+          //   spuId: 0,
+          //   spuSaleAttrValueList: [
+          //     {
+          //       baseSaleAttrId: 0,
+          //       id: 0,
+          //       isChecked: "string",
+          //       saleAttrName: "string",
+          //       saleAttrValueName: "string",
+          //       spuId: 0,
+          //     },
+          //   ],
+          // },
+        ],
+      },
       // 所有品牌信息
       tradeMarkList: [],
       // spu图片
       spuImageList: [],
       // 平台所有的销售属性
-      saleList: [],
+      saleAttrList: [],
+      // 收集未选择的销售属性的id
+      attrIdAndAttrName: "",
     };
   },
-  methods: {
-    handleRemove(file, fileList) {
-      console.log(file, fileList);
+  computed: {
+    // 还未选择的销售属性
+    unSelectSaleAttr() {
+      // 整个平台的销售属性一共三个：颜色、尺寸、版本 --saleAttrList
+      return this.saleAttrList.filter((c1) => {
+        return this.spu.spuSaleAttrList.every((c2) => {
+          return c1.name != c2.saleAttrName;
+        });
+      });
     },
+  },
+  methods: {
+    // 照片墙图片删除时触发 file：删除的是那张图片  fileList：剩下的其他图片
+    handleRemove(file, fileList) {
+      this.spuImageList = fileList;
+    },
+    // 照片墙图片预览
     handlePictureCardPreview(file) {
+      // 获取图片地址
       this.dialogImageUrl = file.url;
+      // 对话框显示
       this.dialogVisible = true;
+    },
+    // 上传图片成功回调
+    handleSuccess(response, file, fileList) {
+      // 收集图片的信息
+      this.spuImageList = fileList;
     },
     // 初始化SpuForm的数据
     async initSpuData(spu) {
@@ -85,23 +209,82 @@ export default {
       }
       // 获取所有品牌
       let tradeMarkResult = await this.$API.spu.reqTradeMarkList();
-      console.log(tradeMarkResult);
       if (tradeMarkResult.code === 200) {
         this.tradeMarkList = tradeMarkResult.data;
       }
       // 获取spu图片
       let spuImageResult = await this.$API.spu.reqSpuImageList(spu.id);
       if (spuImageResult.code === 200) {
-        this.spuImageList = spuImageResult.data;
+        //照片墙显示图片的数据需要数据，且里面的元素需要name与url字段
+        let listArr = spuImageResult.data;
+        listArr.forEach((c) => {
+          c.name = c.imgName;
+          c.url = c.imgUrl;
+        });
+        this.spuImageList = listArr;
       }
       // 获取平台所有的销售属性
       let saleResult = await this.$API.spu.reqBaseSaleAttrList();
       if (saleResult.code === 200) {
-        this.saleList = saleResult.data;
+        this.saleAttrList = saleResult.data;
       }
+    },
+    // 添加新的销售属性
+    addSaleAttr() {
+      // 把收集到的销售属性进行分割
+      const [baseSaleAttrId, saleAttrName] = this.attrIdAndAttrName.split(":");
+      let newSaleAttr = { baseSaleAttrId, saleAttrName, spuSaleAttrList: [] };
+      // 添加新的销售属性
+      this.spu.spuSaleAttrList.push(newSaleAttr);
+      // 清空选择栏数据
+      this.attrIdAndAttrName = "";
+    },
+    // 添加按钮的回调
+    addSaleAttrValue(row) {
+      this.$set(row, "inputVisible", true);
+      this.$set(row, "inputValue", "");
+      // this.$nextTick((_) => {
+      //   this.$refs.saveTagInput.$refs.input.focus();
+      // });
+    },
+    // 失去焦点
+    handleInputConfirm(row) {
+      const { baseSaleAttrId, inputValue } = row;
+      // 校验
+      if (inputValue.trim() == "") {
+        this.$message("属性值不能为空");
+        return;
+      }
+      let result = row.spuSaleAttrValueList.every(
+        (c) => c.saleAttrValueName != inputValue
+      );
+      if (!result) {
+        this.$message("属性值不能重复");
+        return;
+      }
+      // 新增的销售属性值
+      let newSaleAttrValue = { baseSaleAttrId, saleAttrValueName: inputValue };
+      row.spuSaleAttrValueList.push(newSaleAttrValue);
+      row.inputVisible = false;
     },
   },
 };
 </script>
 
-<style></style>
+<style>
+.el-tag + .el-tag {
+  margin-left: 10px;
+}
+.button-new-tag {
+  margin-left: 10px;
+  height: 32px;
+  line-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.input-new-tag {
+  width: 90px;
+  margin-left: 10px;
+  vertical-align: bottom;
+}
+</style>

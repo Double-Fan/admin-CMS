@@ -3,7 +3,7 @@
     <el-card style="margin: 20px 0">
       <CategorySelect
         @getCategoryId="getCategoryId"
-        :show="!show"
+        :show="scene != 0"
       ></CategorySelect>
     </el-card>
     <el-card>
@@ -68,7 +68,11 @@
       </div>
 
       <!-- 添加|修改spu -->
-      <SpuForm v-show="scene === 1" @changeScene="changeScene" ref="spu"></SpuForm>
+      <SpuForm
+        v-show="scene === 1"
+        @changeScene="changeScene"
+        ref="spu"
+      ></SpuForm>
 
       <!-- 添加sku -->
       <SkuForm v-show="scene === 2"></SkuForm>
@@ -88,7 +92,6 @@ export default {
       category1Id: "",
       category2Id: "",
       category3Id: "",
-      show: true,
       // spu列表数据
       records: [],
       // 第几页
