@@ -109,8 +109,8 @@
         </el-table>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary">保存</el-button>
-        <el-button @click="$emit('changeScene', 0)">取消</el-button>
+        <el-button type="primary" @click="addOrUpdateSpu">保存</el-button>
+        <el-button @click="cancel()">取消</el-button>
       </el-form-item>
     </el-form>
   </div>
@@ -130,37 +130,13 @@ export default {
         // 描述
         description: "",
         // 品牌ID
-        tmId: 0,
+        tmId: "",
         // SPU名称
         spuName: "",
         // SPU图片
-        spuImageList: [
-          {
-            id: 0,
-            imgName: "string",
-            imgUrl: "string",
-            spuId: 0,
-          },
-        ],
+        spuImageList: [],
         // 平台属性与属性值
-        spuSaleAttrList: [
-          // {
-          //   baseSaleAttrId: 0,
-          //   id: 0,
-          //   saleAttrName: "string",
-          //   spuId: 0,
-          //   spuSaleAttrValueList: [
-          //     {
-          //       baseSaleAttrId: 0,
-          //       id: 0,
-          //       isChecked: "string",
-          //       saleAttrName: "string",
-          //       saleAttrValueName: "string",
-          //       spuId: 0,
-          //     },
-          //   ],
-          // },
-        ],
+        spuSaleAttrList: [],
       },
       // 所有品牌信息
       tradeMarkList: [],
@@ -243,9 +219,9 @@ export default {
     addSaleAttrValue(row) {
       this.$set(row, "inputVisible", true);
       this.$set(row, "inputValue", "");
-      // this.$nextTick((_) => {
-      //   this.$refs.saveTagInput.$refs.input.focus();
-      // });
+      this.$nextTick((_) => {
+        this.$refs.saveTagInput.$refs.input.focus();
+      });
     },
     // 失去焦点
     handleInputConfirm(row) {
@@ -266,6 +242,52 @@ export default {
       let newSaleAttrValue = { baseSaleAttrId, saleAttrValueName: inputValue };
       row.spuSaleAttrValueList.push(newSaleAttrValue);
       row.inputVisible = false;
+    },
+    // 保存|修改SPU
+    async addOrUpdateSpu() {
+      // 整理参数
+      this.spu.spuImageList = this.spuImageList.map((c) => {
+        return {
+          imageName: c.name,
+          imageUrl: (c.response && c.response.data) || c.url,
+        };
+      });
+      // 发请求
+      let result = await this.$API.spu.reqAddOrUpdateSpu(this.spu);
+      if (result.code === 200) {
+        if (this.spu.id) {
+          this.$message({ type: "success", message: "修改成功" });
+        } else {
+          this.$message({ type: "success", message: "添加成功" });
+        }
+        this.$emit("changeScene", {
+          scene: 0,
+          flag: this.spu.id ? "修改" : "添加",
+        });
+      }
+      Object.assign(this._data, this.$options.data());
+    },
+    // 点击添加SPU按钮的时候，发请求
+    async addSpuData(category3Id) {
+      this.spu.category3Id = category3Id;
+      // 获取所有品牌
+      let tradeMarkResult = await this.$API.spu.reqTradeMarkList();
+      if (tradeMarkResult.code === 200) {
+        this.tradeMarkList = tradeMarkResult.data;
+      }
+      // 获取平台所有的销售属性
+      let saleResult = await this.$API.spu.reqBaseSaleAttrList();
+      if (saleResult.code === 200) {
+        this.saleAttrList = saleResult.data;
+      }
+      addOrUpdateSpu();
+    },
+    // 取消按钮
+    cancel() {
+      // 清理数据:  assign合并对象， this._data：可以操作data中响应式的数据   this.$options：获取配置对象，配置对象的data函数执行，返回的响应式数组为空
+      Object.assign(this._data, this.$options.data());
+      // 通知父亲，切换场景
+      this.$emit("changeScene", { scene: 0, flag: "" });
     },
   },
 };
